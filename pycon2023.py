@@ -1,12 +1,10 @@
 import dash
-import dash_html_components as html
+import dash.html as html
 import dash_bootstrap_components as dbc
-import dash_core_components as dcc
-from dash.dependencies import Input, Output
+import dash.dcc as dcc
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objs as go
-from dash_table import DataTable
+import plotly.graph_objects as go
+from dash.dependencies import Output, Input
 
 df = pd.read_csv("all_matches_2012-2021.csv")
 df = df.rename(columns={"striker": "batsman", "runs_off_bat" : "runs", "season": "year"})
@@ -21,67 +19,58 @@ top_scorers_ovr = top_scorers_ovr.groupby(by=["batsman"]).sum().\
 top_scorers_ovr = top_scorers_ovr.reset_index()
 top_10_run_getters = top_scorers_ovr[["batsman","runs"]][:10]
 
-# create app
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SKETCHY])
 
+# create app
+app = dash.Dash(external_stylesheets=[dbc.themes.SKETCHY])
+
+# create layout
 app.layout = html.Div([
-    html.Center([html.H1("My cricket dashboard webapp")]),
-    html.Center([html.H2("IPL stats")]),
-    html.Br(),
+
+    html.Center(html.H1("PyCon2023 Namibia")),
+    html.Center(html.H2("IPL batting stats")),
 
     dbc.Row([
 
         dbc.Col([
-            html.Br(),
-            html.Center(html.H5("Most runs overall")),
+
+            html.Center("Most runs in the IPL"),
             html.Center("Select the number of batsman"),
 
-            dcc.Slider(id='n_batsman_slider_ovr',
-                       min=0,
-                       max=50,
-                       step=5,
-                       value=10,
-                       marks={year: {'label': str(year)} for year in range(0, 51, 5)},
-                       included=False,
-                       ),
-            dcc.Graph(id='top_runs_chart_ovr'),
+            dcc.Slider(0,50,5,
+                       value=15,
+                       id="most_runs_slider"),
 
-        ], lg=8, md=12),
+            dcc.Graph(id="most_runs_graph"),
+
+        ]),
 
         dbc.Col([
-            html.Br(),
 
-            html.Center("This section shows the all time IPL top runs scorers for the period 2008 - 2021"),
-            html.Center("Top 10 run getters for the period 2008 - 2021"),
+            html.Center("Dropdown"),
 
-            DataTable(data=top_10_run_getters.to_dict("records"),
-                      columns=[{"name": col, "id": col} for col in top_10_run_getters.columns],
-                      style_cell={"textAlign": "left", },
-                      style_cell_conditional=[{'if': {'column_id': 'batsman'}, 'width': '80px'},
-                                              {'if': {'column_id': 'runs'}, 'width': '80px'}, ],
-                      style_header={"backgroundColor": "rgb(99,110,250)"},
-                      css=[{
-                          'selector': '.dash-spreadsheet-container',
-                          'rule': 'padding: 10px 30px 30px 30px; overflow: hidden;'
-                      }],
+            dcc.Dropdown(options=[{"label" : year, "value": year} for year in range(2015,2024)],
+                         value=2021)
 
-                      ),
+        ]),
 
-        ], lg=4, md=12),
-    ])
+    ]),
+
 ])
 
-@app.callback(Output('top_runs_chart_ovr', 'figure'),
-              Input('n_batsman_slider_ovr', 'value'))
-def plot_runs_by_batsman_chart_ovr(n_batsman):
-    layout = go.Layout(
-        height=400,
+# create callback function
+@app.callback(Output(component_id="most_runs_graph", component_property="figure"),
+              Input(component_id="most_runs_slider", component_property="value"))
+def plot_most_runs_graph(n_batsmen):
+    graph_layout = go.Layout(
+        height = 400,
     )
-    fig = go.Figure(layout=layout)
-    dff = top_scorers_ovr[:n_batsman]
-    fig.add_bar(x= dff["batsman"],
-                y= dff["runs"])
+    fig = go.Figure(layout=graph_layout)
+    dff = top_scorers_ovr[:n_batsmen]
+    fig.add_bar(x = dff["batsman"],
+                y = dff["runs"])
+
     return fig
 
-if __name__ == "__main__":
-    app.run_server(debug=True)
+
+# run app
+app.run(debug=True)
